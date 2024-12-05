@@ -1,7 +1,7 @@
 package com.hashmac.recipesapp;
 
 import static java.lang.System.currentTimeMillis;
-
+import android.app.AlertDialog;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -82,6 +82,8 @@ public class AddRecipeActivity extends AppCompatActivity {
             // 4. We will pick the image from the gallery.
             pickImage();
         });
+        //加入觀看資料結構20241205 1958
+        binding.btnViewStructure.setOnClickListener(v -> showDatabaseStructure());
 
         // For Edit Purpose
         isEdit = getIntent().getBooleanExtra("isEdit", false);
@@ -245,5 +247,49 @@ public class AddRecipeActivity extends AppCompatActivity {
                 });
             }
         }
+    }
+
+    private void showDatabaseStructure() {
+        DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference();
+        rootRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                StringBuilder structure = new StringBuilder();
+                for (DataSnapshot node : snapshot.getChildren()) {
+                    structure.append("\n表格: ").append(node.getKey()).append("\n");
+                    if (node.hasChildren()) {
+                        structure.append("欄位:\n");
+                        DataSnapshot firstChild = node.getChildren().iterator().next();
+                        for (DataSnapshot field : firstChild.getChildren()) {
+                            structure.append("  - ").append(field.getKey())
+                                    .append(" (").append(getValueType(field.getValue()))
+                                    .append(")\n");
+                        }
+                    }
+                    structure.append("-------------------\n");
+                }
+
+                showStructureDialog(structure.toString());
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(AddRecipeActivity.this,
+                        "錯誤: " + error.getMessage(),
+                        Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+    //加入觀看資料結構 20241205 1959
+    private String getValueType(Object value) {
+        return value == null ? "null" : value.getClass().getSimpleName();
+    }
+
+    private void showStructureDialog(String structure) {
+        new AlertDialog.Builder(this)
+                .setTitle("資料庫結構")
+                .setMessage(structure)
+                .setPositiveButton("確定", null)
+                .show();
     }
 }
