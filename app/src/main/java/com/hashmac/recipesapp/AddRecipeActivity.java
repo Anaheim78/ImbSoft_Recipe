@@ -255,15 +255,22 @@ public class AddRecipeActivity extends AppCompatActivity {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 StringBuilder structure = new StringBuilder();
+                int maxRows = 3; // 限制顯示的行數
                 for (DataSnapshot node : snapshot.getChildren()) {
                     structure.append("\n表格: ").append(node.getKey()).append("\n");
                     if (node.hasChildren()) {
-                        structure.append("欄位:\n");
-                        DataSnapshot firstChild = node.getChildren().iterator().next();
-                        for (DataSnapshot field : firstChild.getChildren()) {
-                            structure.append("  - ").append(field.getKey())
-                                    .append(" (").append(getValueType(field.getValue()))
-                                    .append(")\n");
+                        structure.append("欄位與值:\n");
+                        int rowCount = 0; // 記錄已處理的行數
+                        for (DataSnapshot child : node.getChildren()) {
+                            if (rowCount >= maxRows) break; // 如果超過最大行數，停止處理
+                            structure.append("  節點ID: ").append(child.getKey()).append("\n");
+                            for (DataSnapshot field : child.getChildren()) {
+                                structure.append("    - ").append(field.getKey())
+                                        .append(": ").append(field.getValue()) // 加入實際值
+                                        .append(" (").append(getValueType(field.getValue())).append(")\n");
+                            }
+                            structure.append("\n");
+                            rowCount++;
                         }
                     }
                     structure.append("-------------------\n");
@@ -280,6 +287,7 @@ public class AddRecipeActivity extends AppCompatActivity {
             }
         });
     }
+
     //加入觀看資料結構 20241205 1959
     private String getValueType(Object value) {
         return value == null ? "null" : value.getClass().getSimpleName();
