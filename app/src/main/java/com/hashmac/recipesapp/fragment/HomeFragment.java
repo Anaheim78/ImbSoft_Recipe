@@ -184,9 +184,12 @@ public class HomeFragment extends Fragment {
 
     private void loadPopularRecipes(List<Recipe> recipes) {
         List<Recipe> popularRecipes = new ArrayList<>();
+
         for (int i = 0; i < 5; i++) {
             int random = (int) (Math.random() * recipes.size());
-            popularRecipes.add(recipes.get(random));
+            //popularRecipes.add(recipes.get(random));
+            //先改成都一樣
+            popularRecipes.add(recipes.get(0));
         }
         HorizontalRecipeAdapter adapter = (HorizontalRecipeAdapter) binding.rvPopulars.getAdapter();
         if (adapter != null) {

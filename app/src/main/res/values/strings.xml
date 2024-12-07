@@ -4,6 +4,7 @@
     <string name="login">Login</string>
     <string name="password">Password</string>
     <string name="email">Email</string>
+    <string name="test">test</string>
     <string name="or">Or</string>
     <string name="signup">SignUp</string>
     <string name="if_you_don_t_have_an_account_click_here">If you don\'t have an account, click here</string>
