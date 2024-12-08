@@ -31,6 +31,12 @@ import com.hashmac.recipesapp.models.Recipe;
 import com.vansuita.pickimage.bundle.PickSetup;
 import com.vansuita.pickimage.dialog.PickImageDialog;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+import java.io.IOException;
+import okhttp3.*;
+
+
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,6 +67,7 @@ import java.util.Objects;
  */
 
 public class AddRecipeActivity extends AppCompatActivity {
+    private static final String IMGUR_CLIENT_ID = "86594aef2075667";
     ActivityAddRecipeBinding binding;
     private boolean isImageSelected = false;
     private ProgressDialog dialog;
@@ -74,6 +81,7 @@ public class AddRecipeActivity extends AppCompatActivity {
         setContentView(binding.getRoot());
         // 9. Load the categories from the firebase database.
         loadCategories();
+        // 20241208 16:17  暫時不使用FireBase storage作為圖床
         binding.btnAddRecipe.setOnClickListener(view -> {
             // 1. We will get Data from the user and validate it.
             getData();
@@ -83,6 +91,7 @@ public class AddRecipeActivity extends AppCompatActivity {
             pickImage();
         });
         //加入觀看資料結構20241205 1958
+        // 20241208 16:17 按下confirm跑這邊，直接匿名上傳到Imgur
         binding.btnViewStructure.setOnClickListener(v -> showDatabaseStructure());
 
         // For Edit Purpose
@@ -194,9 +203,11 @@ public class AddRecipeActivity extends AppCompatActivity {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
         byte[] data = baos.toByteArray();
+        Log.d("DE_uploadImage", "img length: " + data.length);
         UploadTask uploadTask = storageRef.putBytes(data);
         uploadTask.continueWithTask(task -> {
             if (!task.isSuccessful()) {
+                Log.d("DE_uploadImage", "UploadNotSuccess " + data.length);
                 throw Objects.requireNonNull(task.getException());
             }
             return storageRef.getDownloadUrl();
@@ -206,6 +217,7 @@ public class AddRecipeActivity extends AppCompatActivity {
                 // We need to save this download url in firebase database
                 // So that we can load it in our app
                 url[0] = downloadUri.toString();
+                Log.d("DE__downloadUri", "url " + downloadUri.toString());
                 Toast.makeText(AddRecipeActivity.this, "Image Uploaded Successfully", Toast.LENGTH_SHORT).show();
                 saveDataInDataBase(recipe, url[0]);
             } else {
@@ -250,6 +262,84 @@ public class AddRecipeActivity extends AppCompatActivity {
     }
 
     private void showDatabaseStructure() {
+        //測試Fimgur上傳圖片 sample code
+        //取資料
+        String recipeName = Objects.requireNonNull(binding.etRecipeName.getText()).toString();
+        String recipeDescription = Objects.requireNonNull(binding.etDescription.getText()).toString();
+        String cookingTime = Objects.requireNonNull(binding.etCookingTime.getText()).toString();
+        String recipeCategory = binding.etCategory.getText().toString();
+        String calories = Objects.requireNonNull(binding.etCalories.getText()).toString();
+
+        // 2. We will validate the data.
+        if (recipeName.isEmpty()) {
+            binding.etRecipeName.setError("Please enter Recipe Name");
+        } else if (recipeDescription.isEmpty()) {
+            binding.etDescription.setError("Please enter Recipe Description");
+        } else if (cookingTime.isEmpty()) {
+            binding.etCookingTime.setError("Please enter Cooking Time");
+        } else if (recipeCategory.isEmpty()) {
+            binding.etCategory.setError("Please enter Recipe Category");
+        } else if (calories.isEmpty()) {
+            binding.etCalories.setError("Please enter Calories");
+        } else if (!isImageSelected) {
+            Toast.makeText(this, "Please select an image", Toast.LENGTH_SHORT).show();
+        } else {
+            // 3. We will create a Recipe Object.
+            // ID will be auto generated.
+            dialog = new ProgressDialog(this);
+            dialog.setMessage("Uploading Recipe...");
+            dialog.setCancelable(false);
+            dialog.show();
+            Recipe recipe = new Recipe(recipeName, recipeDescription, cookingTime, recipeCategory, calories, "", FirebaseAuth.getInstance().getUid());
+
+            // 準備圖片數據
+            binding.imgRecipe.setDrawingCacheEnabled(true);
+            Bitmap bitmap = ((BitmapDrawable) binding.imgRecipe.getDrawable()).getBitmap();
+            binding.imgRecipe.setDrawingCacheEnabled(false);
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, baos);
+            byte[] imageData = baos.toByteArray();
+
+            // Imgur 上傳
+            RequestBody requestBody = new MultipartBody.Builder()
+                    .setType(MultipartBody.FORM)
+                    .addFormDataPart("image", "recipe_image.jpg",
+                            RequestBody.create(imageData, MediaType.parse("image/jpeg")))
+                    .build();
+
+            Request request = new Request.Builder()
+                    .url("https://api.imgur.com/3/image")
+                    .header("Authorization", "Client-ID " + IMGUR_CLIENT_ID)
+                    .post(requestBody)
+                    .build();
+
+            new OkHttpClient().newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                    runOnUiThread(() -> {
+                        dialog.dismiss();
+                        Toast.makeText(AddRecipeActivity.this, "Upload failed: " + e.getMessage(),
+                                Toast.LENGTH_LONG).show();
+                    });
+                }
+
+                @Override
+                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                    String imgurUrl = null;
+                    try {
+                        imgurUrl = new JSONObject(response.body().string())
+                                .getJSONObject("data")
+                                .getString("link");
+                    } catch (JSONException e) {
+                        throw new RuntimeException(e);
+                    }
+                    Log.d("imgurUrl", "url: " + imgurUrl);
+                    String finalImgurUrl = imgurUrl;
+                    runOnUiThread(() -> saveDataInDataBase(recipe, finalImgurUrl));
+                }
+            });
+        /* 觀看資料結構 2021208 12:15
         DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference();
         rootRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -285,19 +375,10 @@ public class AddRecipeActivity extends AppCompatActivity {
                         "錯誤: " + error.getMessage(),
                         Toast.LENGTH_LONG).show();
             }
-        });
-    }
+        }); */
+        }
 
-    //加入觀看資料結構 20241205 1959
-    private String getValueType(Object value) {
-        return value == null ? "null" : value.getClass().getSimpleName();
-    }
+        //加入觀看資料結構 20241205 1959
 
-    private void showStructureDialog(String structure) {
-        new AlertDialog.Builder(this)
-                .setTitle("資料庫結構")
-                .setMessage(structure)
-                .setPositiveButton("確定", null)
-                .show();
     }
 }

@@ -132,6 +132,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/textInputLayout6" />
+        <!--20241208 16:17 改為使用此按鈕，改用Imgur圖床 -->
         <Button
             android:id="@+id/btn_view_structure"
             android:layout_width="0dp"
@@ -139,10 +140,11 @@
             android:layout_marginStart="16dp"
             android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"
-            android:text="查看資料庫結構"
+            android:text="Confirm"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/btn_add_recipe" />
+        <!--20241208 16:17  原本上傳Firbase storage功能紐隱藏 -->
         <Button
             android:id="@+id/btn_add_recipe"
             android:layout_width="0dp"
@@ -151,6 +153,7 @@
             android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"
             android:text="Add Recipe"
+            android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/img_recipe" />
